@@ -1,11 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
 using SmartHotel360.PublicWeb.Models.Settings;
 using SmartHotel360.PublicWeb.Services;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -55,18 +53,13 @@ namespace SmartHotel360.PublicWeb.Controllers
 
         private async Task<Guid> UploadDocument(Uri uri, string petName)
         {
-
-            var endpoint = new Uri(_settings.PetsConfig.CosmosUri);
-            var auth = _settings.PetsConfig.CosmosKey;
-            var client = new DocumentClient(endpoint, auth);
+            var cosmosClient = new CosmosClient(_settings.PetsConfig.CosmosUri, _settings.PetsConfig.CosmosKey);
             var identifier = Guid.NewGuid();
 
-            await client.CreateDatabaseIfNotExistsAsync(new Database() { Id = dbName });
-            await client.CreateDocumentCollectionIfNotExistsAsync(UriFactory.CreateDatabaseUri(dbName),
-                new DocumentCollection { Id = colName });
+            var database = await cosmosClient.CreateDatabaseIfNotExistsAsync(dbName);
+            var container = await database.Database.CreateContainerIfNotExistsAsync(colName, "/id");
 
-            await client.CreateDocumentAsync(
-                UriFactory.CreateDocumentCollectionUri(dbName, colName),
+            await container.Container.CreateItemAsync(
                 new PetDocument
                 {
                     Id = identifier,
@@ -81,33 +74,38 @@ namespace SmartHotel360.PublicWeb.Controllers
 
         private async Task<Uri> UploadPetToStorage(byte[] content)
         {
-            var storageName = _settings.PetsConfig.BlobName;
-            var auth = _settings.PetsConfig.BlobKey;
-            var uploader = new PhotoUploader(storageName, auth);
+            // Create connection string from storage name and key
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_settings.PetsConfig.BlobName};AccountKey={_settings.PetsConfig.BlobKey};EndpointSuffix=core.windows.net";
+            var uploader = new PhotoUploader(connectionString);
             var blob = await uploader.UploadPetPhoto(content);
             return blob.Uri;
         }
 
         [HttpGet]
-        public IActionResult GetUploadState(Guid identifier)
+        public async Task<IActionResult> GetUploadState(Guid identifier)
         {
+            var cosmosClient = new CosmosClient(_settings.PetsConfig.CosmosUri, _settings.PetsConfig.CosmosKey);
+            var container = cosmosClient.GetContainer(dbName, colName);
 
-            var endpoint = new Uri(_settings.PetsConfig.CosmosUri);
-            var auth = _settings.PetsConfig.CosmosKey;
-            var client = new DocumentClient(endpoint, auth);
-
-            var collectionUri = UriFactory.CreateDocumentCollectionUri(dbName, colName);
-            var query = client.CreateDocumentQuery<PetDocument>(collectionUri, new FeedOptions() { MaxItemCount = 1 });
-
-            var docs = query.Where(x => x.Id == identifier).Where(x => x.IsApproved.HasValue).ToList();
-
-            var doc = docs.FirstOrDefault();
-
-            return Ok(new
+            try
             {
-                Approved = doc?.IsApproved ?? false,
-                Message = doc?.Message ?? ""
-            });
+                var response = await container.ReadItemAsync<PetDocument>(identifier.ToString(), new PartitionKey(identifier.ToString()));
+                var doc = response.Resource;
+
+                return Ok(new
+                {
+                    Approved = doc?.IsApproved ?? false,
+                    Message = doc?.Message ?? ""
+                });
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return Ok(new
+                {
+                    Approved = false,
+                    Message = "Document not found or still processing"
+                });
+            }
         }
     }
 }

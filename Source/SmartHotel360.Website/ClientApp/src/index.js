@@ -6,16 +6,14 @@ import 'react-datepicker/dist/react-datepicker.css';
 import './scss/site.css';
 
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
-import { ConnectedRouter } from 'react-router-redux';
+import { BrowserRouter } from 'react-router-dom';
 import { createBrowserHistory } from 'history';
 import configureStore from './store/configureStore';
 import App from './App';
 import { loadSettings } from './Settings';
 import registerServiceWorker from './registerServiceWorker';
-
-
 
 // Create browser history to use in the Redux store
 const baseUrl = document.getElementsByTagName('base')[0].getAttribute('href');
@@ -29,14 +27,15 @@ const init = async () => {
     await loadSettings();
 
     const rootElement = document.getElementById('root');
+    const root = createRoot(rootElement);
 
-    ReactDOM.render(
+    root.render(
         <Provider store={store}>
-            <ConnectedRouter history={history}>
+            <BrowserRouter basename={baseUrl}>
                 <App />
-            </ConnectedRouter>
-        </Provider>,
-        rootElement);
+            </BrowserRouter>
+        </Provider>
+    );
 
     registerServiceWorker();
 };
