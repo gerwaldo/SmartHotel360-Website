@@ -1,8 +1,7 @@
-﻿
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
-import { Range } from 'rc-slider';
+import Slider from 'rc-slider';
 import * as RoomsStore from '../store/Rooms';
 
 class FilterPrice extends Component {
@@ -16,7 +15,7 @@ class FilterPrice extends Component {
                 <span className='sh-filter_price-value'>$ {this.props.filters.minPrice}</span>
                 <span className='sh-filter_price-value'>$ {this.props.filters.maxPrice}</span>
             </div>
-            <Range min={0} max={1000} defaultValue={[this.props.filters.minPrice, this.props.filters.maxPrice]} tipFormatter={value => `$${value}`} onChange={this.onSliderChange} />
+            <Slider.Range min={0} max={1000} defaultValue={[this.props.filters.minPrice, this.props.filters.maxPrice]} tipFormatter={value => `$${value}`} onChange={this.onSliderChange} />
         </div>;
     }
 }

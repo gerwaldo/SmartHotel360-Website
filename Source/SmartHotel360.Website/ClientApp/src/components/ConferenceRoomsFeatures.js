@@ -1,7 +1,6 @@
-﻿import React, { Component } from 'react';
+import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
-import Swipeable from 'react-swipeable';
 import * as ConferenceRoomsFeaturesStore from '../store/ConferenceRoomsFeatures';
 
 
@@ -44,18 +43,13 @@ class ConferenceRoomsFeatures extends Component {
             <span className='sh-rooms_feature-arrow icon-sh-chevron' onClick={this.onSwipedRight}></span>
             <span className='sh-rooms_feature-arrow sh-rooms_feature-arrow--right icon-sh-chevron' onClick={this.onSwipedLeft}></span>
 
-            <Swipeable
-                trackMouse
-                onSwipedLeft={this.onSwipedLeft}
-                onSwipedRight={this.onSwipedRight}>
-                <div className='sh-rooms_feature-carousel'>
-                    <ul className='sh-rooms_feature-slider' style={this.props.translation.styles}>
-                        {this.props.list.map((feature, key) =>
-                            this.renderRoomInCarousel(feature, key)
-                        )}
-                    </ul>
-                </div>
-            </Swipeable>
+            <div className='sh-rooms_feature-carousel'>
+                <ul className='sh-rooms_feature-slider' style={this.props.translation.styles}>
+                    {this.props.list.map((feature, key) =>
+                        this.renderRoomInCarousel(feature, key)
+                    )}
+                </ul>
+            </div>
 
             <button className='sh-rooms_feature-button btn'>Find a conference room</button>
         </div>;
