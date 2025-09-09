@@ -1,42 +1,32 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System;
+using System.IO;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 
 namespace SmartHotel360.PublicWeb
 {
-    using Microsoft.WindowsAzure.Storage;
-    using Microsoft.WindowsAzure.Storage.Auth;
-    using Microsoft.WindowsAzure.Storage.Blob;
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Threading.Tasks;
-
     public class PhotoUploader
     {
-        private readonly StorageCredentials _credentials;
-        private readonly CloudStorageAccount _storageAccount;
-        private readonly CloudBlobClient _blobClient;
+        private readonly BlobServiceClient _blobServiceClient;
 
-        public PhotoUploader(string name, string constr)
+        public PhotoUploader(string connectionString)
         {
-            _credentials = new StorageCredentials(name, constr);
-            _storageAccount = new CloudStorageAccount(_credentials, useHttps: true);
-            _blobClient = _storageAccount.CreateCloudBlobClient();
+            _blobServiceClient = new BlobServiceClient(connectionString);
         }
 
-        public async Task<CloudBlockBlob> UploadPetPhoto(byte[] content)
+        public async Task<BlobClient> UploadPetPhoto(byte[] content)
         {
-            var petsContainer = _blobClient.GetContainerReference("pets");
-            await petsContainer.CreateIfNotExistsAsync();
+            var containerClient = _blobServiceClient.GetBlobContainerClient("pets");
+            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
 
-
-            var newBlob = petsContainer.GetBlockBlobReference(Guid.NewGuid().ToString());
-            await newBlob.UploadFromByteArrayAsync(content, 0, content.Length);
-            return newBlob;
+            var blobName = Guid.NewGuid().ToString();
+            var blobClient = containerClient.GetBlobClient(blobName);
+            
+            using var stream = new MemoryStream(content);
+            await blobClient.UploadAsync(stream, overwrite: true);
+            
+            return blobClient;
         }
-
     }
 }
